@@ -9,7 +9,7 @@ We built a real-time system that detects driver drowsiness using a webcam, with 
 
 The system watches the driver through a webcam and monitors three things at the same time:
 
-- **Eye State (PERCLOS)** — uses a deep learning model to check if the eyes are open or closed. If the eyes are closed more than 60% of the time in a 3-second window, it triggers an alert
+- **Eye State (PERCLOS)** — uses a deep learning model to check if the eyes are open or closed. If the eyes are closed more than 35% of the time in a 3-second window, it triggers an alert
 - **Yawn Detection** — another model detects yawning. If the driver yawns 2 or more times within 2 minutes, it gives a warning
 - **Head Pose** — uses MediaPipe to track head position. If the head starts nodding down for more than 20 consecutive frames, it means the driver might be falling asleep
 
@@ -24,8 +24,8 @@ We used **EfficientNetV2-S** as the backbone with **CBAM attention mechanism** a
 For the eye detection we also trained three separate submodels based on the sensor type in the MRL dataset, then combined them using **Weighted Majority Voting**.
 
 **Datasets used:**
-- MRL Eye Dataset — 84,898 infrared eye images
-- Yawn Eye Dataset — from Kaggle
+- MRL Eye Dataset — 84,898 infrared eye images — http://mrl.cs.vsb.cz/eyedataset
+- Yawn Eye Dataset — from Kaggle — https://www.kaggle.com/datasets/davidvazquezcic/yawn-eye-dataset-new
 
 ### Accuracy Results
 
@@ -44,6 +44,8 @@ The main code is inside the `src/` folder:
 - `train.py` — handles the training process
 - `evaluate.py` — tests the models and saves the voting weights
 - `demo.py` — the live webcam demo
+- `alert_system.py` — audio alert manager (warning beep + danger beep)
+- `make_plots.py` — generates ROC curves, F1 bar chart, and loss/accuracy curves
 
 Results and saved models go into `outputs/` (models in `outputs/models/`, plots in `outputs/plots/`).
 

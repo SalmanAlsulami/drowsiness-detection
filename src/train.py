@@ -9,6 +9,7 @@ Usage:
 """
 
 import argparse
+import json
 import time
 from pathlib import Path
 
@@ -144,6 +145,9 @@ def train(data_dir: Path, model_name: str, cfg: dict, use_weighted: bool):
     criterion = nn.CrossEntropyLoss()
     best_val_acc = 0.0
 
+    # history will store loss and accuracy for every epoch across both phases
+    history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": [], "phase_boundary": 0}
+
     # phase 1: only CBAM and the classification head are trained
     p1 = cfg["phase1_epochs"]
     print(f"\n--- Phase 1: CBAM + head only ({p1} epochs, backbone frozen) ---")
@@ -159,6 +163,10 @@ def train(data_dir: Path, model_name: str, cfg: dict, use_weighted: bool):
         tr_loss, tr_acc = run_epoch(model, train_loader, criterion, optimizer, train=True)
         vl_loss, vl_acc = run_epoch(model, val_loader,   criterion, None,      train=False)
         scheduler.step()
+        history["train_loss"].append(tr_loss)
+        history["train_acc"].append(tr_acc)
+        history["val_loss"].append(vl_loss)
+        history["val_acc"].append(vl_acc)
         print(
             f"  [{epoch:2d}/{p1}]"
             f"  train {tr_loss:.4f}/{tr_acc:.4f}"
@@ -170,6 +178,9 @@ def train(data_dir: Path, model_name: str, cfg: dict, use_weighted: bool):
             best_val_acc = vl_acc
             torch.save(model.state_dict(),
                        OUTPUTS_DIR / "models" / f"{model_name}_phase1_best.pth")
+
+    # mark where phase 2 starts in the history list
+    history["phase_boundary"] = len(history["train_loss"])
 
     # phase 2: unfreeze everything and fine-tune with a smaller learning rate
     p2 = cfg["phase2_epochs"]
@@ -185,6 +196,10 @@ def train(data_dir: Path, model_name: str, cfg: dict, use_weighted: bool):
         tr_loss, tr_acc = run_epoch(model, train_loader, criterion, optimizer, train=True)
         vl_loss, vl_acc = run_epoch(model, val_loader,   criterion, None,      train=False)
         scheduler.step()
+        history["train_loss"].append(tr_loss)
+        history["train_acc"].append(tr_acc)
+        history["val_loss"].append(vl_loss)
+        history["val_acc"].append(vl_acc)
         print(
             f"  [{epoch:2d}/{p2}]"
             f"  train {tr_loss:.4f}/{tr_acc:.4f}"
@@ -196,8 +211,14 @@ def train(data_dir: Path, model_name: str, cfg: dict, use_weighted: bool):
             torch.save(model.state_dict(),
                        OUTPUTS_DIR / "models" / f"{model_name}_best.pth")
 
+    # save training history so we can plot loss/accuracy curves later
+    history_path = OUTPUTS_DIR / "models" / f"{model_name}_history.json"
+    with open(history_path, "w") as f:
+        json.dump(history, f, indent=2)
+
     print(f"\nBest val acc   : {best_val_acc:.4f}")
     print(f"Saved          : outputs/models/{model_name}_best.pth")
+    print(f"History saved  : outputs/models/{model_name}_history.json")
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ import torch.nn.functional as F
 from torchvision import transforms
 
 from model import build_model
+from alert_system import AlertManager
 
 PROJECT_ROOT       = Path(__file__).resolve().parent.parent
 DEFAULT_EYE_MODEL  = PROJECT_ROOT / "outputs/models/efficientnetv2s_cbam_main_best.pth"
@@ -28,8 +29,9 @@ IMG_SIZE = 224
 
 # PERCLOS: we track eye state over the last 90 frames (3 seconds at 30fps)
 # if more than 60% of frames show closed eyes, we trigger an alert
-PERCLOS_WINDOW    = 90
-PERCLOS_THRESHOLD = 0.60
+PERCLOS_WINDOW    = 90    # 3-second rolling window
+PERCLOS_MIN_FRAMES = 30   # start calculating after 1 second (don't wait for full buffer)
+PERCLOS_THRESHOLD = 0.35  # 35% closure triggers alert (literature range: 30-40%)
 EYE_PAD           = 0.35   # how much extra space to add around the eye crop
 
 # if the eye stays closed for 60 frames in a row (2 seconds) we trigger immediately
@@ -211,19 +213,6 @@ def _gaze_offset(landmarks, h: int, w: int) -> float:
     return sum(offsets) / len(offsets) if offsets else 0.0
 
 
-def _play_alert() -> None:
-    # plays alert.wav if it exists in the project root
-    try:
-        import pygame
-        if not pygame.mixer.get_init():
-            pygame.mixer.init()
-        p = PROJECT_ROOT / "alert.wav"
-        if p.exists() and not pygame.mixer.music.get_busy():
-            pygame.mixer.music.load(str(p))
-            pygame.mixer.music.play()
-    except Exception:
-        pass
-
 
 def _draw_indicator(
     frame: np.ndarray,
@@ -257,6 +246,8 @@ def run_demo(
     else:
         print("Yawn model     : not loaded (run train.py --task yawn first)")
 
+    alert_mgr = AlertManager(PROJECT_ROOT)
+
     # MediaPipe face mesh gives us 478 facial landmarks per frame
     # refine_landmarks=True adds iris landmarks which we need for gaze tracking
     face_mesh = mp.solutions.face_mesh.FaceMesh(
@@ -273,22 +264,28 @@ def run_demo(
     print("Press Q / ESC to quit, or close the window.\n")
 
     # these buffers track state across multiple frames
-    eye_states          = deque(maxlen=PERCLOS_WINDOW)    # 1=closed, 0=open per frame
+    eye_states: deque   = deque(maxlen=PERCLOS_WINDOW)    # 1=closed, 0=open per frame
     yawn_frames         = deque(maxlen=YAWN_FRAME_WINDOW) # 1=yawn, 0=no_yawn per frame
     yawn_event_times: List[float] = []                    # timestamps of yawn events
     last_yawn_event_time: float   = 0.0
     head_pose_counter   = 0
     gaze_counter        = 0
-    alert_active        = False
     yawn_active         = False   # remembers if we were yawning last frame
     consec_closed_count = 0       # how many frames in a row the eye has been closed
 
     import time
 
+    fps_prev_time = time.time()
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break
+
+        # calculate FPS
+        now = time.time()
+        fps = 1.0 / (now - fps_prev_time) if (now - fps_prev_time) > 0 else 0
+        fps_prev_time = now
 
         h, w  = frame.shape[:2]
         focal = w                          # use image width as approximate focal length
@@ -315,9 +312,16 @@ def run_demo(
             except cv2.error:
                 yaw = 0.0
 
-            # only run eye detection when the face is roughly frontal
-            # if the face is turned too far sideways the eye crop looks closed even when open
-            face_frontal = abs(yaw) <= HEAD_YAW_SKIP
+            # compute gaze offset first so we can use it to gate eye detection
+            gaze_off = _gaze_offset(lm, h, w)
+            if abs(gaze_off) > GAZE_THRESH:
+                gaze_counter += 1
+            else:
+                gaze_counter = max(0, gaze_counter - 1)
+
+            # skip eye detection if head is turned sideways OR eyes are looking far to the side
+            # both cases make the eye crop look closed even when the eye is open
+            face_frontal = abs(yaw) <= HEAD_YAW_SKIP and abs(gaze_off) <= GAZE_THRESH
             if face_frontal:
                 closed_probs = []
                 for eye_idx, side in ((RIGHT_EYE_IDX, "R"), (LEFT_EYE_IDX, "L")):
@@ -334,22 +338,23 @@ def run_demo(
                                 (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
 
                 if closed_probs:
-                    avg_prob = sum(closed_probs) / len(closed_probs)
-                    eye_states.append(1 if avg_prob > 0.5 else 0)
-                    # track how many frames in a row the eye has been closed
-                    if avg_prob >= 0.5:
+                    # require ALL detected eyes to be above threshold
+                    # this prevents one misclassified eye from triggering false alerts
+                    is_closed = all(p > 0.5 for p in closed_probs)
+                    eye_states.append(1 if is_closed else 0)
+                    if is_closed:
                         consec_closed_count += 1
                     else:
                         consec_closed_count = 0
                 else:
                     consec_closed_count = 0
             else:
-                # face turned sideways: reset the consecutive counter
+                # face turned sideways or gaze too far: reset the consecutive counter
                 consec_closed_count = 0
 
-            # calculate PERCLOS once the buffer is full (90 frames)
-            if len(eye_states) == PERCLOS_WINDOW:
-                perclos = sum(eye_states) / PERCLOS_WINDOW
+            # calculate PERCLOS once we have at least 1 second of data
+            if len(eye_states) >= PERCLOS_MIN_FRAMES:
+                perclos = sum(eye_states) / len(eye_states)
 
             # yawn detection using the full face crop
             if yawn_model is not None:
@@ -378,12 +383,6 @@ def run_demo(
                                     if now - t <= YAWN_EVENT_WINDOW]
                 yawn_events_1m = len(yawn_event_times)
 
-            # gaze: check how far the iris is from the center of the eye
-            gaze_off = _gaze_offset(lm, h, w)
-            if abs(gaze_off) > GAZE_THRESH:
-                gaze_counter += 1
-            else:
-                gaze_counter = max(0, gaze_counter - 1)
 
         else:
             # no face found: reset the consecutive eye closed counter
@@ -400,14 +399,16 @@ def run_demo(
         is_drowsy  = perclos_alert or consec_alert or active_count >= 2
         is_warning = (not is_drowsy) and active_count >= 1
 
-        was_alert    = alert_active
-        alert_active = is_drowsy or is_warning
-        if is_drowsy and not was_alert:
-            _play_alert()
+        if is_drowsy:
+            alert_mgr.update("danger")
+        elif is_warning:
+            alert_mgr.update("warning")
+        else:
+            alert_mgr.update("none")
 
         # draw the three indicator lines at the bottom of the frame
         _draw_indicator(frame, "PERCLOS",
-                        f"{perclos:.0%} ({len(eye_states)}/{PERCLOS_WINDOW})",
+                        f"{perclos:.0%} ({len(eye_states)} frames)",
                         perclos_alert, h - 80)
         _draw_indicator(frame, "YAWN",
                         f"{yawn_events_1m} events/2min",
@@ -415,6 +416,8 @@ def run_demo(
         _draw_indicator(frame, "HEAD",
                         f"pitch={pitch:+.1f}deg",
                         head_alert, h - 20)
+        cv2.putText(frame, f"FPS: {fps:.0f}",
+                    (w - 90, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
 
         # show the alert banner at the top
         if is_drowsy:
@@ -426,6 +429,11 @@ def run_demo(
             cv2.rectangle(frame, (0, 0), (w, 65), (0, 140, 255), -1)
             cv2.putText(frame, "WARNING: Drowsiness Signs Detected",
                         (w // 2 - 270, 45),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+        else:
+            cv2.rectangle(frame, (0, 0), (w, 65), (0, 160, 0), -1)
+            cv2.putText(frame, "Driver is Alert",
+                        (w // 2 - 120, 45),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
         # check if the window was closed before drawing the next frame
