@@ -112,3 +112,9 @@ This project was made by:
 **Department:** Data Science  
 **Supervisor:** Dr. Mohammad Kamal Halwani  
 **Year:** 2025 / 2026
+
+---
+
+## Repository
+
+https://github.com/SalmanAlsulami/drowsiness-detection
