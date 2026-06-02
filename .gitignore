@@ -30,3 +30,11 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Internal notes
+CLAUDE.md
+
+# Alert sound files (generated automatically at runtime)
+alert_warning.wav
+alert_danger.wav
+alert.wav
