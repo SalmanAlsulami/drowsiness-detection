@@ -229,6 +229,8 @@ def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
     eye_right_prob: Optional[float] = None
     yawn_prob_val: Optional[float]  = None
     face_found    = bool(res.multi_face_landmarks)
+    if not face_found:
+        print(f"[dbg] no face detected frame={w}x{h}")
 
     if face_found:
         lm = res.multi_face_landmarks[0].landmark
@@ -251,16 +253,17 @@ def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
         else:
             s.gaze_counter = max(0, s.gaze_counter - 1)
 
-        # eye detection only when face is roughly frontal (yaw check only;
-        # gaze check removed — unreliable on compressed 320x240 web frames)
         face_frontal = abs(yaw_angle) <= HEAD_YAW_SKIP
+        print(f"[dbg] face=True yaw={yaw_angle:.1f} frontal={face_frontal} frame={w}x{h}")
         if face_frontal:
             closed_probs = []
             for eye_idx, side in ((RIGHT_EYE_IDX, "R"), (LEFT_EYE_IDX, "L")):
                 crop = _eye_crop(frame, lm, eye_idx, h, w)
                 if crop is None:
+                    print(f"[dbg] {side} eye crop=None")
                     continue
                 p = _closed_prob(crop)
+                print(f"[dbg] {side} eye prob={p:.3f}")
                 closed_probs.append(p)
                 if side == "R":
                     eye_right_prob = p
