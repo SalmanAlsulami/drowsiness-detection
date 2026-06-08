@@ -109,12 +109,12 @@ def _to_tensor(bgr_crop: np.ndarray) -> torch.Tensor:
 
 
 def _closed_prob(crop: np.ndarray) -> float:
-    with torch.no_grad():
+    with torch.inference_mode():
         return F.softmax(_eye_model(_to_tensor(crop)), dim=1)[0, 0].item()
 
 
 def _yawn_prob(crop: np.ndarray) -> float:
-    with torch.no_grad():
+    with torch.inference_mode():
         return F.softmax(_yawn_model(_to_tensor(crop)), dim=1)[0, 1].item()
 
 
@@ -202,6 +202,7 @@ class _SessionState:
         self.gaze_counter          = 0
         self.yawn_active           = False
         self.consec_closed_count   = 0
+        self.frame_count           = 0
         self.face_mesh             = mp.solutions.face_mesh.FaceMesh(
             max_num_faces=1,
             refine_landmarks=True,
@@ -217,6 +218,7 @@ class _SessionState:
 def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
     h, w  = frame.shape[:2]
     focal = float(w)
+    s.frame_count += 1
     rgb   = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     res   = s.face_mesh.process(rgb)
 
@@ -278,8 +280,8 @@ def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
         if len(s.eye_states) >= PERCLOS_MIN_FRAMES:
             perclos = sum(s.eye_states) / len(s.eye_states)
 
-        # yawn
-        if _yawn_model is not None:
+        # yawn — run every 3rd frame to reduce CPU load
+        if _yawn_model is not None and s.frame_count % 3 == 0:
             face = _face_crop(frame, lm, h, w)
             if face is not None:
                 yawn_p = _yawn_prob(face)

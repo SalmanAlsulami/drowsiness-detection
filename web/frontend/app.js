@@ -119,7 +119,7 @@ async function startInspection() {
     $cameraFrame.className = 'camera-frame state-safe';
     startSessionTimer();
     lastFpsTick = Date.now(); frameCount = 0;
-    sendLoop = setInterval(captureAndSend, 100); // 10fps
+    sendLoop = setInterval(captureAndSend, 200); // 5fps max
   };
 
   ws.onmessage = ev => {
@@ -168,7 +168,7 @@ function captureAndSend() {
   waitingForResponse = true;
   // Safety: if no response in 4s, unlock so connection stays alive
   responseTimeoutId = setTimeout(() => { waitingForResponse = false; }, 4000);
-  ws.send($canvas.toDataURL('image/jpeg', 0.82));
+  ws.send($canvas.toDataURL('image/jpeg', 0.65));
   frameCount++;
   const now = Date.now();
   if (now - lastFpsTick >= 1000) {
