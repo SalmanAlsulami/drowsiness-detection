@@ -118,7 +118,7 @@ async function startInspection() {
     $cameraFrame.className = 'camera-frame state-safe';
     startSessionTimer();
     lastFpsTick = Date.now(); frameCount = 0;
-    sendLoop = setInterval(captureAndSend, 333); // 3fps — safe for CPU inference
+    sendLoop = setInterval(captureAndSend, 100); // 10fps
   };
 
   ws.onmessage = ev => {

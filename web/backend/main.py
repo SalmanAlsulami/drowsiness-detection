@@ -42,7 +42,7 @@ IMG_SIZE = 224
 
 # ── constants (identical to demo.py) ──────────────────────────────────────
 PERCLOS_WINDOW       = 90
-PERCLOS_MIN_FRAMES   = 30
+PERCLOS_MIN_FRAMES   = 15
 PERCLOS_THRESHOLD    = 0.35
 EYE_PAD              = 0.35
 CONSEC_CLOSED_FRAMES = 60
@@ -229,8 +229,6 @@ def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
     eye_right_prob: Optional[float] = None
     yawn_prob_val: Optional[float]  = None
     face_found    = bool(res.multi_face_landmarks)
-    if not face_found:
-        print(f"[dbg] no face detected frame={w}x{h}")
 
     if face_found:
         lm = res.multi_face_landmarks[0].landmark
@@ -254,16 +252,13 @@ def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
             s.gaze_counter = max(0, s.gaze_counter - 1)
 
         face_frontal = abs(yaw_angle) <= HEAD_YAW_SKIP
-        print(f"[dbg] face=True yaw={yaw_angle:.1f} frontal={face_frontal} frame={w}x{h}")
         if face_frontal:
             closed_probs = []
             for eye_idx, side in ((RIGHT_EYE_IDX, "R"), (LEFT_EYE_IDX, "L")):
                 crop = _eye_crop(frame, lm, eye_idx, h, w)
                 if crop is None:
-                    print(f"[dbg] {side} eye crop=None")
                     continue
                 p = _closed_prob(crop)
-                print(f"[dbg] {side} eye prob={p:.3f}")
                 closed_probs.append(p)
                 if side == "R":
                     eye_right_prob = p

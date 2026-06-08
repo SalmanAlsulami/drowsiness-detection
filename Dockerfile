@@ -20,6 +20,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+ENV PYTHONUNBUFFERED=1
+
 # system libs + curl (needed to download models from GitHub Releases)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
