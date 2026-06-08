@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DrowsAlert — Driver Safety Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ══ HEADER ═══════════════════════════════════════════════════════════ -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-mark">
+          <svg viewBox="0 0 40 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 13 C8 3, 32 3, 38 13 C32 23, 8 23, 2 13 Z"
+                  stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <circle cx="20" cy="13" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <circle cx="20" cy="13" r="2.5" fill="currentColor"/>
+            <line x1="2"  y1="13" x2="7"  y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="33" y1="13" x2="38" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="header-info">
+          <div class="header-sys-id">DSS · v2.1 · EfficientNetV2-S + CBAM + PERCLOS</div>
+          <h1 class="header-title">DROWSINESS DETECTION SYSTEM</h1>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="session-block">
+          <span class="session-label">SESSION</span>
+          <span id="session-time" class="session-val">—</span>
+        </div>
+        <div id="status-badge" class="status-badge standby">
+          <span class="badge-ring"></span>
+          <span id="badge-text">STANDBY</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ══ ALERT BANNER ══════════════════════════════════════════════════════ -->
+    <div id="alert-banner" class="alert-banner standby">
+      <div class="banner-content">
+        <span id="banner-icon" class="banner-icon">◈</span>
+        <span id="alert-text">SYSTEM READY — PRESS INITIATE MONITORING TO BEGIN</span>
+      </div>
+    </div>
+
+    <!-- ══ MAIN ══════════════════════════════════════════════════════════════ -->
+    <main class="main">
+
+      <!-- Camera panel -->
+      <section class="camera-section">
+        <div id="camera-frame" class="camera-frame">
+
+          <!-- Corner brackets -->
+          <div class="brackets">
+            <span class="bkt bkt-tl"></span>
+            <span class="bkt bkt-tr"></span>
+            <span class="bkt bkt-bl"></span>
+            <span class="bkt bkt-br"></span>
+          </div>
+
+          <video id="video" autoplay muted playsinline></video>
+          <canvas id="canvas" style="display:none"></canvas>
+          <div class="scanlines"></div>
+
+          <!-- Cam status chip -->
+          <div class="cam-chip">
+            <span id="rec-dot" class="rec-dot"></span>
+            <span id="cam-status-text">OFFLINE</span>
+          </div>
+
+          <!-- No face badge -->
+          <div id="no-face" class="no-face hidden">△ NO FACE DETECTED</div>
+
+          <!-- Idle overlay -->
+          <div id="idle-overlay" class="idle-overlay">
+            <div class="idle-icon-wrap">
+              <svg viewBox="0 0 80 52" fill="none">
+                <path d="M3 26 C14 8, 66 8, 77 26 C66 44, 14 44, 3 26 Z"
+                      stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+                <circle cx="40" cy="26" r="12" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <circle cx="40" cy="26" r="5"  stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <circle cx="40" cy="26" r="2"  fill="currentColor" opacity="0.5"/>
+              </svg>
+            </div>
+            <p class="idle-title">AWAITING CAMERA INPUT</p>
+            <p class="idle-sub">Click Initiate Monitoring to start analysis</p>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="cam-controls">
+          <button id="start-btn" class="btn btn-start">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
+              <polygon points="5,3 21,12 5,21"/>
+            </svg>
+            INITIATE MONITORING
+          </button>
+          <button id="stop-btn" class="btn btn-stop hidden">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
+              <rect x="4" y="4" width="16" height="16"/>
+            </svg>
+            TERMINATE SESSION
+          </button>
+        </div>
+      </section>
+
+      <!-- Metrics panel -->
+      <aside class="metrics-panel">
+
+        <!-- PERCLOS Arc Gauge -->
+        <div class="m-block" id="perclos-block">
+          <div class="m-header">
+            <span class="m-label">PERCLOS</span>
+            <span class="m-tag">eye closure · 3s window</span>
+          </div>
+          <div class="gauge-wrap">
+            <svg class="arc-svg" viewBox="0 0 200 115" xmlns="http://www.w3.org/2000/svg">
+              <!-- Background arc: M 10 105 A 90 90 0 0 0 190 105  (counterclockwise = goes up) -->
+              <path class="arc-bg-path" d="M 10 105 A 90 90 0 0 0 190 105"
+                    fill="none" stroke-width="13" stroke-linecap="butt"/>
+              <!-- Value arc -->
+              <path id="arc-fill" d="M 10 105 A 90 90 0 0 0 190 105"
+                    fill="none" stroke-width="13" stroke-linecap="butt"
+                    stroke-dasharray="0 283"/>
+              <!-- Threshold tick at 35% (angle=117°, point≈(59,25)) -->
+              <line x1="56" y1="19" x2="62" y2="31"
+                    class="thresh-line" stroke-width="2.5" stroke-linecap="round"/>
+              <text x="46" y="13" class="gauge-small-label" text-anchor="middle">35%</text>
+              <!-- Center readout -->
+              <text id="arc-pct-text" x="100" y="86"
+                    text-anchor="middle" class="gauge-big-val">0%</text>
+              <text x="100" y="104" text-anchor="middle" class="gauge-sub-label">CLOSURE RATE</text>
+              <!-- Range labels -->
+              <text x="10"  y="114" text-anchor="middle" class="gauge-range-label">0</text>
+              <text x="190" y="114" text-anchor="middle" class="gauge-range-label">70%</text>
+            </svg>
+          </div>
+          <div id="perclos-frames-label" class="m-meta">0 frames — warming up (need 30)</div>
+        </div>
+
+        <!-- Eye State -->
+        <div class="m-block">
+          <div class="m-header">
+            <span class="m-label">EYE STATE</span>
+            <span id="consec-label" class="m-tag">consec. closed: 0 frames</span>
+          </div>
+          <div class="eyes-row">
+            <div class="eye-card" id="eye-left-card">
+              <div class="eye-vis">
+                <svg viewBox="0 0 70 36" class="eye-shape-svg" id="eye-left-svg">
+                  <path d="M4 18 Q35 3 66 18 Q35 33 4 18 Z"
+                        class="eye-outline" fill="none" stroke-width="1.8"/>
+                  <ellipse id="eye-left-pupil" cx="35" cy="18" rx="8" ry="8" class="eye-pupil"/>
+                  <ellipse id="eye-left-iris"  cx="35" cy="18" rx="4" ry="4" class="eye-iris"/>
+                </svg>
+              </div>
+              <span class="eye-label-side">LEFT</span>
+              <span id="eye-left-prob" class="eye-prob-val">—</span>
+            </div>
+
+            <div class="eye-sep"></div>
+
+            <div class="eye-card" id="eye-right-card">
+              <div class="eye-vis">
+                <svg viewBox="0 0 70 36" class="eye-shape-svg" id="eye-right-svg">
+                  <path d="M4 18 Q35 3 66 18 Q35 33 4 18 Z"
+                        class="eye-outline" fill="none" stroke-width="1.8"/>
+                  <ellipse id="eye-right-pupil" cx="35" cy="18" rx="8" ry="8" class="eye-pupil"/>
+                  <ellipse id="eye-right-iris"  cx="35" cy="18" rx="4" ry="4" class="eye-iris"/>
+                </svg>
+              </div>
+              <span class="eye-label-side">RIGHT</span>
+              <span id="eye-right-prob" class="eye-prob-val">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Yawn Events -->
+        <div class="m-block" id="yawn-block">
+          <div class="m-header">
+            <span class="m-label">YAWN EVENTS</span>
+            <span class="m-tag">per 2 min window</span>
+          </div>
+          <div class="yawn-row">
+            <span id="yawn-count" class="yawn-count-val">0</span>
+            <div class="yawn-pips">
+              <div class="pip" id="pip-0"></div>
+              <div class="pip" id="pip-1"></div>
+              <span class="yawn-limit">/ 2</span>
+            </div>
+          </div>
+          <div id="yawn-prob-label" class="m-meta">Probability: —</div>
+        </div>
+
+        <!-- Head Pose -->
+        <div class="m-block" id="head-block">
+          <div class="m-header">
+            <span class="m-label">HEAD POSE</span>
+            <span class="m-tag">pitch · alert &gt; +20°</span>
+          </div>
+          <div class="pitch-row">
+            <span id="pitch-val" class="pitch-big-val">+0.0°</span>
+          </div>
+          <div class="pitch-gauge">
+            <div class="pitch-zones-wrap">
+              <div class="pz pz-dl"></div>
+              <div class="pz pz-wl"></div>
+              <div class="pz pz-safe"></div>
+              <div class="pz pz-wr"></div>
+              <div class="pz pz-dr"></div>
+            </div>
+            <div class="pitch-needle-track">
+              <div class="pitch-center-tick"></div>
+              <div id="pitch-needle" class="pitch-needle"></div>
+            </div>
+            <div class="pitch-scale">
+              <span>−40°</span><span>−20°</span><span>0°</span><span>+20°</span><span>+40°</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Footer -->
+        <div class="stats-bar">
+          <div class="stat-cell">
+            <span class="stat-lbl">FPS</span>
+            <span id="fps-val" class="stat-num">—</span>
+          </div>
+          <div class="stat-div"></div>
+          <div class="stat-cell">
+            <span class="stat-lbl">LATENCY</span>
+            <span id="latency-val" class="stat-num">—</span>
+          </div>
+          <div class="stat-div"></div>
+          <div class="stat-cell">
+            <span class="stat-lbl">MODEL</span>
+            <span class="stat-num stat-model">EFNetV2-S</span>
+          </div>
+        </div>
+
+      </aside>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
