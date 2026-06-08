@@ -53,7 +53,7 @@ YAWN_EVENT_THRESH    = 2
 YAWN_COOLDOWN        = 2.0
 HEAD_PITCH_THRESH    = 20.0
 HEAD_POSE_FRAMES     = 20
-HEAD_YAW_SKIP        = 45.0
+HEAD_YAW_SKIP        = 60.0
 GAZE_THRESH          = 0.35
 
 RIGHT_EYE_IDX = [33,  7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246]
@@ -326,6 +326,7 @@ def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
         "eye_left_prob":  round(eye_left_prob,  3) if eye_left_prob  is not None else None,
         "eye_right_prob": round(eye_right_prob, 3) if eye_right_prob is not None else None,
         "yawn_prob":      round(yawn_prob_val,  3) if yawn_prob_val  is not None else None,
+        "yaw":            round(yaw_angle, 1),
     }
 
 

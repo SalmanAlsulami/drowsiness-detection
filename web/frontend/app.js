@@ -50,6 +50,7 @@ const $pitchNeedle = document.getElementById('pitch-needle');
 // Stats
 const $fpsVal     = document.getElementById('fps-val');
 const $latencyVal = document.getElementById('latency-val');
+const $yawVal     = document.getElementById('yaw-val');
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const GAUGE_C    = 301.59;  // 2π × 48  (circle r=48, viewBox 120×120)
@@ -234,6 +235,9 @@ function renderResult(d) {
   $pitchNeedle.style.background = nc;
   const ns = d.head_alert ? 'rgba(255,59,48,.65)' : Math.abs(p) > 12 ? 'rgba(255,149,0,.55)' : 'rgba(48,209,88,.55)';
   $pitchNeedle.style.boxShadow = `0 0 8px ${ns}`;
+
+  if (d.yaw !== undefined)
+    $yawVal.textContent = (d.yaw >= 0 ? '+' : '') + d.yaw + '°';
 }
 
 // ── Gauge (circular) ───────────────────────────────────────────────────────
@@ -316,7 +320,7 @@ function resetMetrics() {
   $pitchNeedle.style.boxShadow  = '0 0 8px rgba(48,209,88,.55)';
   $headBlock.classList.remove('alerted');
 
-  $fpsVal.textContent = '—'; $latencyVal.textContent = '—';
+  $fpsVal.textContent = '—'; $latencyVal.textContent = '—'; $yawVal.textContent = '—';
   setFaceState('alert');
 }
 
