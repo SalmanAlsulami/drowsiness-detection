@@ -63,6 +63,7 @@ let ws = null, stream = null, sendLoop = null;
 let frameCount = 0, lastFpsTick = 0, lastSentAt = 0;
 let prevLevel = '';
 let sessionStart = null, sessionTimer = null;
+let waitingForResponse = false;  // prevent frame queue buildup on slow servers
 
 // ── Session timer ──────────────────────────────────────────────────────────
 function startSessionTimer() {
@@ -116,11 +117,12 @@ async function startInspection() {
     $cameraFrame.className = 'camera-frame state-safe';
     startSessionTimer();
     lastFpsTick = Date.now(); frameCount = 0;
-    sendLoop = setInterval(captureAndSend, 100);
+    sendLoop = setInterval(captureAndSend, 333); // 3fps — safe for CPU inference
   };
 
   ws.onmessage = ev => {
     $latencyVal.textContent = (Date.now() - lastSentAt) + 'ms';
+    waitingForResponse = false;
     renderResult(JSON.parse(ev.data));
   };
 
@@ -154,9 +156,11 @@ function stopInspection() {
 // ── Capture ────────────────────────────────────────────────────────────────
 function captureAndSend() {
   if (!ws || ws.readyState !== WebSocket.OPEN || !stream) return;
+  if (waitingForResponse) return;  // drop frame if server hasn't responded yet
   const ctx = $canvas.getContext('2d');
   ctx.drawImage($video, 0, 0, $canvas.width, $canvas.height);
   lastSentAt = Date.now();
+  waitingForResponse = true;
   ws.send($canvas.toDataURL('image/jpeg', 0.82));
   frameCount++;
   const now = Date.now();
