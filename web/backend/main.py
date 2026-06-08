@@ -266,7 +266,7 @@ def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
                     eye_left_prob = p
 
             if closed_probs:
-                is_closed = all(p > 0.5 for p in closed_probs)
+                is_closed = all(p > 0.40 for p in closed_probs)
                 s.eye_states.append(1 if is_closed else 0)
                 s.consec_closed_count = s.consec_closed_count + 1 if is_closed else 0
             else:

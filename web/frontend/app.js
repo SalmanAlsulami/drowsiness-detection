@@ -108,8 +108,8 @@ async function startInspection() {
   ws.onopen = () => {
     $startBtn.classList.add('hidden');
     $stopBtn.classList.remove('hidden');
-    $canvas.width  = 320;
-    $canvas.height = 240;
+    $canvas.width  = 640;
+    $canvas.height = 480;
     $recDot.classList.add('live');
     $camStatusText.textContent = 'LIVE';
     $scanLine.classList.add('active');
