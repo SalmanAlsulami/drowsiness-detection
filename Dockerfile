@@ -48,7 +48,7 @@ RUN mkdir -p /app/outputs/models && \
     curl -fSL "${RELEASE_BASE}/efficientnetv2s_cbam_yawn_best.pth" \
          -o /app/outputs/models/efficientnetv2s_cbam_yawn_best.pth
 
-EXPOSE 8000
+EXPOSE 7860
 
-# Railway injects $PORT; fall back to 8000 locally
-CMD uvicorn web.backend.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Railway injects $PORT; HF Spaces uses 7860; fall back to 7860 locally
+CMD uvicorn web.backend.main:app --host 0.0.0.0 --port ${PORT:-7860}
