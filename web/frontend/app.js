@@ -63,7 +63,8 @@ let ws = null, stream = null, sendLoop = null;
 let frameCount = 0, lastFpsTick = 0, lastSentAt = 0;
 let prevLevel = '';
 let sessionStart = null, sessionTimer = null;
-let waitingForResponse = false;  // prevent frame queue buildup on slow servers
+let waitingForResponse = false;
+let responseTimeoutId  = null;
 
 // ── Session timer ──────────────────────────────────────────────────────────
 function startSessionTimer() {
@@ -121,9 +122,12 @@ async function startInspection() {
   };
 
   ws.onmessage = ev => {
-    $latencyVal.textContent = (Date.now() - lastSentAt) + 'ms';
+    const data = JSON.parse(ev.data);
+    if (data.ping) return;           // server keepalive — ignore
+    clearTimeout(responseTimeoutId);
     waitingForResponse = false;
-    renderResult(JSON.parse(ev.data));
+    $latencyVal.textContent = (Date.now() - lastSentAt) + 'ms';
+    renderResult(data);
   };
 
   ws.onerror = () => setBadge('badge-standby', 'ERROR');
@@ -161,6 +165,8 @@ function captureAndSend() {
   ctx.drawImage($video, 0, 0, $canvas.width, $canvas.height);
   lastSentAt = Date.now();
   waitingForResponse = true;
+  // Safety: if no response in 4s, unlock so connection stays alive
+  responseTimeoutId = setTimeout(() => { waitingForResponse = false; }, 4000);
   ws.send($canvas.toDataURL('image/jpeg', 0.82));
   frameCount++;
   const now = Date.now();

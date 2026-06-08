@@ -352,9 +352,23 @@ async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
     state = _SessionState()
     loop  = asyncio.get_event_loop()
+
+    async def _keepalive():
+        """Send a ping every 25 s so Railway's proxy doesn't close the connection."""
+        while True:
+            await asyncio.sleep(25)
+            try:
+                await ws.send_text('{"ping":1}')
+            except Exception:
+                break
+
+    ping_task = asyncio.create_task(_keepalive())
     try:
         while True:
             data = await ws.receive_text()
+            # ignore client-side heartbeats if any
+            if data == '{"ping":1}':
+                continue
             # data is a base64 data-URL: "data:image/jpeg;base64,..."
             _, encoded = data.split(",", 1)
             img_bytes = base64.b64decode(encoded)
@@ -370,4 +384,5 @@ async def websocket_endpoint(ws: WebSocket):
     except Exception as e:
         print(f"[ws] session error: {e}")
     finally:
+        ping_task.cancel()
         state.close()
