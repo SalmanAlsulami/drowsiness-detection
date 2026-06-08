@@ -3,250 +3,287 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DrowsAlert — Driver Safety Monitor</title>
+  <title>Wakey Wakey — Driver Safety Monitor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div id="app">
 
-    <!-- ══ HEADER ═══════════════════════════════════════════════════════════ -->
+    <!-- ══ HEADER ════════════════════════════════════════════════════════════ -->
     <header class="header">
-      <div class="header-left">
-        <div class="logo-mark">
-          <svg viewBox="0 0 40 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2 13 C8 3, 32 3, 38 13 C32 23, 8 23, 2 13 Z"
-                  stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <circle cx="20" cy="13" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <circle cx="20" cy="13" r="2.5" fill="currentColor"/>
-            <line x1="2"  y1="13" x2="7"  y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="33" y1="13" x2="38" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div class="header-info">
-          <div class="header-sys-id">DSS · v2.1 · EfficientNetV2-S + CBAM + PERCLOS</div>
-          <h1 class="header-title">DROWSINESS DETECTION SYSTEM</h1>
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 36 22" fill="none">
+          <path d="M1 11C7 2 29 2 35 11C29 20 7 20 1 11Z" stroke="currentColor" stroke-width="1.4" fill="none"/>
+          <circle cx="18" cy="11" r="5.5" stroke="currentColor" stroke-width="1.4" fill="none"/>
+          <circle cx="18" cy="11" r="2.5" fill="currentColor"/>
+        </svg>
+        <div>
+          <h1 class="brand-name">WAKEY WAKEY</h1>
+          <p class="brand-sub">EfficientNetV2-S · CBAM · PERCLOS</p>
         </div>
       </div>
       <div class="header-right">
         <div class="session-block">
-          <span class="session-label">SESSION</span>
+          <span class="meta-label">SESSION</span>
           <span id="session-time" class="session-val">—</span>
         </div>
-        <div id="status-badge" class="status-badge standby">
-          <span class="badge-ring"></span>
+        <div id="status-badge" class="badge badge-standby">
+          <span class="badge-dot"></span>
           <span id="badge-text">STANDBY</span>
         </div>
       </div>
     </header>
 
-    <!-- ══ ALERT BANNER ══════════════════════════════════════════════════════ -->
-    <div id="alert-banner" class="alert-banner standby">
-      <div class="banner-content">
-        <span id="banner-icon" class="banner-icon">◈</span>
-        <span id="alert-text">SYSTEM READY — PRESS INITIATE MONITORING TO BEGIN</span>
-      </div>
+    <!-- ══ ALERT BANNER ═══════════════════════════════════════════════════════ -->
+    <div id="alert-banner" class="banner banner-standby">
+      <span id="banner-icon" class="banner-icon">○</span>
+      <span id="alert-text">SYSTEM READY — PRESS INITIATE MONITORING TO BEGIN</span>
     </div>
 
-    <!-- ══ MAIN ══════════════════════════════════════════════════════════════ -->
+    <!-- ══ MAIN ═══════════════════════════════════════════════════════════════ -->
     <main class="main">
 
-      <!-- Camera panel -->
-      <section class="camera-section">
+      <!-- ── Camera (70%) ── -->
+      <section class="cam-section">
         <div id="camera-frame" class="camera-frame">
-
-          <!-- Corner brackets -->
-          <div class="brackets">
-            <span class="bkt bkt-tl"></span>
-            <span class="bkt bkt-tr"></span>
-            <span class="bkt bkt-bl"></span>
-            <span class="bkt bkt-br"></span>
-          </div>
-
           <video id="video" autoplay muted playsinline></video>
           <canvas id="canvas" style="display:none"></canvas>
-          <div class="scanlines"></div>
 
-          <!-- Cam status chip -->
-          <div class="cam-chip">
+          <!-- corner brackets -->
+          <span class="bkt bkt-tl"></span>
+          <span class="bkt bkt-tr"></span>
+          <span class="bkt bkt-bl"></span>
+          <span class="bkt bkt-br"></span>
+
+          <!-- scan line -->
+          <div id="scan-line" class="scan-line"></div>
+
+          <!-- live indicator -->
+          <div class="live-chip">
             <span id="rec-dot" class="rec-dot"></span>
             <span id="cam-status-text">OFFLINE</span>
           </div>
 
-          <!-- No face badge -->
+          <!-- no face -->
           <div id="no-face" class="no-face hidden">△ NO FACE DETECTED</div>
 
-          <!-- Idle overlay -->
+          <!-- idle overlay -->
           <div id="idle-overlay" class="idle-overlay">
-            <div class="idle-icon-wrap">
-              <svg viewBox="0 0 80 52" fill="none">
-                <path d="M3 26 C14 8, 66 8, 77 26 C66 44, 14 44, 3 26 Z"
-                      stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
-                <circle cx="40" cy="26" r="12" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                <circle cx="40" cy="26" r="5"  stroke="currentColor" stroke-width="1.5" fill="none"/>
-                <circle cx="40" cy="26" r="2"  fill="currentColor" opacity="0.5"/>
-              </svg>
-            </div>
-            <p class="idle-title">AWAITING CAMERA INPUT</p>
-            <p class="idle-sub">Click Initiate Monitoring to start analysis</p>
+            <svg class="idle-eye-svg" viewBox="0 0 120 60" fill="none">
+              <path d="M4 30 Q60 4 116 30 Q60 56 4 30Z" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.5"/>
+              <circle cx="60" cy="30" r="14" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
+              <circle cx="60" cy="30" r="6" fill="currentColor" opacity="0.5"/>
+            </svg>
+            <p class="idle-title">CAMERA OFFLINE</p>
+            <p class="idle-sub">Click Initiate Monitoring to begin</p>
           </div>
         </div>
 
         <!-- Controls -->
         <div class="cam-controls">
           <button id="start-btn" class="btn btn-start">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
-              <polygon points="5,3 21,12 5,21"/>
-            </svg>
+            <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><polygon points="4,2 14,8 4,14"/></svg>
             INITIATE MONITORING
           </button>
           <button id="stop-btn" class="btn btn-stop hidden">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
-              <rect x="4" y="4" width="16" height="16"/>
-            </svg>
+            <svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>
             TERMINATE SESSION
           </button>
         </div>
       </section>
 
-      <!-- Metrics panel -->
-      <aside class="metrics-panel">
+      <!-- ── Metrics (30%) ── -->
+      <aside class="metrics">
 
-        <!-- PERCLOS Arc Gauge -->
-        <div class="m-block" id="perclos-block">
-          <div class="m-header">
-            <span class="m-label">PERCLOS</span>
-            <span class="m-tag">eye closure · 3s window</span>
+        <!-- Face State -->
+        <div class="card card-face" id="face-state-card">
+          <div class="face-inner">
+            <!-- Face SVG icon -->
+            <svg id="face-state-icon" class="face-icon alert" viewBox="0 0 80 80">
+              <defs>
+                <clipPath id="face-lclip"><ellipse cx="27" cy="32" rx="9" ry="8"/></clipPath>
+                <clipPath id="face-rclip"><ellipse cx="53" cy="32" rx="9" ry="8"/></clipPath>
+              </defs>
+              <!-- head -->
+              <circle cx="40" cy="40" r="33" class="face-head"/>
+              <!-- left eye -->
+              <ellipse cx="27" cy="32" rx="9" ry="8" class="face-eye-bg"/>
+              <g clip-path="url(#face-lclip)">
+                <circle cx="27" cy="32" r="5" class="face-pupil"/>
+                <circle cx="24" cy="29" r="1.5" fill="white" opacity="0.7"/>
+                <rect class="face-eyelid" x="18" y="24" width="18" height="16"/>
+              </g>
+              <ellipse cx="27" cy="32" rx="9" ry="8" class="face-eye-stroke"/>
+              <!-- right eye -->
+              <ellipse cx="53" cy="32" rx="9" ry="8" class="face-eye-bg"/>
+              <g clip-path="url(#face-rclip)">
+                <circle cx="53" cy="32" r="5" class="face-pupil"/>
+                <circle cx="50" cy="29" r="1.5" fill="white" opacity="0.7"/>
+                <rect class="face-eyelid" x="44" y="24" width="18" height="16"/>
+              </g>
+              <ellipse cx="53" cy="32" rx="9" ry="8" class="face-eye-stroke"/>
+              <!-- mouth -->
+              <path class="face-mouth face-mouth-alert"  d="M30 56 Q40 64 50 56"/>
+              <path class="face-mouth face-mouth-drowsy" d="M30 58 L50 58"/>
+              <path class="face-mouth face-mouth-danger" d="M30 63 Q40 55 50 63"/>
+            </svg>
+            <div class="face-info">
+              <span id="face-state-text" class="face-state-text safe-color">ALERT</span>
+              <span class="meta-label">DRIVER STATUS</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PERCLOS -->
+        <div class="card" id="perclos-block">
+          <div class="card-header">
+            <span class="card-label">PERCLOS</span>
+            <span class="card-tag">closure rate · 3 s</span>
           </div>
           <div class="gauge-wrap">
-            <svg class="arc-svg" viewBox="0 0 200 115" xmlns="http://www.w3.org/2000/svg">
-              <!-- Background arc: M 10 105 A 90 90 0 0 0 190 105  (counterclockwise = goes up) -->
-              <path class="arc-bg-path" d="M 10 105 A 90 90 0 0 0 190 105"
-                    fill="none" stroke-width="13" stroke-linecap="butt"/>
-              <!-- Value arc -->
-              <path id="arc-fill" d="M 10 105 A 90 90 0 0 0 190 105"
-                    fill="none" stroke-width="13" stroke-linecap="butt"
-                    stroke-dasharray="0 283"/>
-              <!-- Threshold tick at 35% (angle=117°, point≈(59,25)) -->
-              <line x1="56" y1="19" x2="62" y2="31"
-                    class="thresh-line" stroke-width="2.5" stroke-linecap="round"/>
-              <text x="46" y="13" class="gauge-small-label" text-anchor="middle">35%</text>
-              <!-- Center readout -->
-              <text id="arc-pct-text" x="100" y="86"
-                    text-anchor="middle" class="gauge-big-val">0%</text>
-              <text x="100" y="104" text-anchor="middle" class="gauge-sub-label">CLOSURE RATE</text>
-              <!-- Range labels -->
-              <text x="10"  y="114" text-anchor="middle" class="gauge-range-label">0</text>
-              <text x="190" y="114" text-anchor="middle" class="gauge-range-label">70%</text>
+            <svg class="gauge-svg" viewBox="0 0 120 120">
+              <!-- Track -->
+              <circle class="gauge-track" cx="60" cy="60" r="48"
+                fill="none" stroke-width="8"
+                transform="rotate(-90 60 60)"/>
+              <!-- Fill -->
+              <circle id="gauge-fill" cx="60" cy="60" r="48"
+                fill="none" stroke-width="8" stroke-linecap="round"
+                stroke-dasharray="301.59" stroke-dashoffset="301.59"
+                transform="rotate(-90 60 60)"/>
+              <!-- Threshold tick at 35% (50% of gauge) at the bottom -->
+              <line x1="60" y1="106" x2="60" y2="114" class="thresh-tick" stroke-width="2" stroke-linecap="round"/>
+              <text x="60" y="119" text-anchor="middle" class="thresh-label">35%</text>
+              <!-- Value -->
+              <text id="arc-pct-text" x="60" y="55" text-anchor="middle" class="gauge-num">0%</text>
+              <text x="60" y="72" text-anchor="middle" class="gauge-sub">PERCLOS</text>
             </svg>
           </div>
-          <div id="perclos-frames-label" class="m-meta">0 frames — warming up (need 30)</div>
+          <p id="perclos-frames-label" class="card-meta">0 frames — warming up</p>
         </div>
 
         <!-- Eye State -->
-        <div class="m-block">
-          <div class="m-header">
-            <span class="m-label">EYE STATE</span>
-            <span id="consec-label" class="m-tag">consec. closed: 0 frames</span>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-label">EYE STATE</span>
+            <span id="consec-label" class="card-tag">closed: 0 frames</span>
           </div>
           <div class="eyes-row">
+            <!-- Left eye -->
             <div class="eye-card" id="eye-left-card">
-              <div class="eye-vis">
-                <svg viewBox="0 0 70 36" class="eye-shape-svg" id="eye-left-svg">
-                  <path d="M4 18 Q35 3 66 18 Q35 33 4 18 Z"
-                        class="eye-outline" fill="none" stroke-width="1.8"/>
-                  <ellipse id="eye-left-pupil" cx="35" cy="18" rx="8" ry="8" class="eye-pupil"/>
-                  <ellipse id="eye-left-iris"  cx="35" cy="18" rx="4" ry="4" class="eye-iris"/>
-                </svg>
+              <svg class="eye-svg-icon" viewBox="0 0 60 28">
+                <defs>
+                  <clipPath id="ec-left">
+                    <ellipse cx="30" cy="14" rx="26" ry="12"/>
+                  </clipPath>
+                </defs>
+                <ellipse cx="30" cy="14" rx="26" ry="12" class="eye-sclera"/>
+                <g clip-path="url(#ec-left)">
+                  <circle cx="30" cy="14" r="10" class="eye-iris"/>
+                  <circle cx="30" cy="14" r="6"  class="eye-pupil-dot"/>
+                  <circle cx="25" cy="10" r="2.5" fill="white" opacity="0.7"/>
+                  <rect class="eye-lid-svg" x="4" y="2" width="52" height="24"/>
+                </g>
+                <ellipse cx="30" cy="14" rx="26" ry="12" class="eye-outline-stroke"/>
+              </svg>
+              <div class="eye-meta">
+                <span class="eye-side-label">LEFT</span>
+                <span id="eye-left-prob" class="eye-prob">—</span>
               </div>
-              <span class="eye-label-side">LEFT</span>
-              <span id="eye-left-prob" class="eye-prob-val">—</span>
             </div>
-
-            <div class="eye-sep"></div>
-
+            <!-- Right eye -->
             <div class="eye-card" id="eye-right-card">
-              <div class="eye-vis">
-                <svg viewBox="0 0 70 36" class="eye-shape-svg" id="eye-right-svg">
-                  <path d="M4 18 Q35 3 66 18 Q35 33 4 18 Z"
-                        class="eye-outline" fill="none" stroke-width="1.8"/>
-                  <ellipse id="eye-right-pupil" cx="35" cy="18" rx="8" ry="8" class="eye-pupil"/>
-                  <ellipse id="eye-right-iris"  cx="35" cy="18" rx="4" ry="4" class="eye-iris"/>
-                </svg>
+              <svg class="eye-svg-icon" viewBox="0 0 60 28">
+                <defs>
+                  <clipPath id="ec-right">
+                    <ellipse cx="30" cy="14" rx="26" ry="12"/>
+                  </clipPath>
+                </defs>
+                <ellipse cx="30" cy="14" rx="26" ry="12" class="eye-sclera"/>
+                <g clip-path="url(#ec-right)">
+                  <circle cx="30" cy="14" r="10" class="eye-iris"/>
+                  <circle cx="30" cy="14" r="6"  class="eye-pupil-dot"/>
+                  <circle cx="25" cy="10" r="2.5" fill="white" opacity="0.7"/>
+                  <rect class="eye-lid-svg" x="4" y="2" width="52" height="24"/>
+                </g>
+                <ellipse cx="30" cy="14" rx="26" ry="12" class="eye-outline-stroke"/>
+              </svg>
+              <div class="eye-meta">
+                <span class="eye-side-label">RIGHT</span>
+                <span id="eye-right-prob" class="eye-prob">—</span>
               </div>
-              <span class="eye-label-side">RIGHT</span>
-              <span id="eye-right-prob" class="eye-prob-val">—</span>
             </div>
           </div>
         </div>
 
-        <!-- Yawn Events -->
-        <div class="m-block" id="yawn-block">
-          <div class="m-header">
-            <span class="m-label">YAWN EVENTS</span>
-            <span class="m-tag">per 2 min window</span>
-          </div>
-          <div class="yawn-row">
-            <span id="yawn-count" class="yawn-count-val">0</span>
-            <div class="yawn-pips">
+        <!-- Yawn + Head (split row) -->
+        <div class="card-row">
+          <!-- Yawn -->
+          <div class="card card-half" id="yawn-block">
+            <div class="card-header">
+              <span class="card-label">YAWN</span>
+              <span class="card-tag">/ 2 min</span>
+            </div>
+            <span id="yawn-count" class="big-num">0</span>
+            <div class="pips">
               <div class="pip" id="pip-0"></div>
               <div class="pip" id="pip-1"></div>
-              <span class="yawn-limit">/ 2</span>
             </div>
+            <p id="yawn-prob-label" class="card-meta">Prob: —</p>
           </div>
-          <div id="yawn-prob-label" class="m-meta">Probability: —</div>
-        </div>
-
-        <!-- Head Pose -->
-        <div class="m-block" id="head-block">
-          <div class="m-header">
-            <span class="m-label">HEAD POSE</span>
-            <span class="m-tag">pitch · alert &gt; +20°</span>
-          </div>
-          <div class="pitch-row">
-            <span id="pitch-val" class="pitch-big-val">+0.0°</span>
-          </div>
-          <div class="pitch-gauge">
-            <div class="pitch-zones-wrap">
-              <div class="pz pz-dl"></div>
-              <div class="pz pz-wl"></div>
-              <div class="pz pz-safe"></div>
-              <div class="pz pz-wr"></div>
-              <div class="pz pz-dr"></div>
+          <!-- Head pose -->
+          <div class="card card-half" id="head-block">
+            <div class="card-header">
+              <span class="card-label">HEAD PITCH</span>
             </div>
-            <div class="pitch-needle-track">
-              <div class="pitch-center-tick"></div>
-              <div id="pitch-needle" class="pitch-needle"></div>
-            </div>
-            <div class="pitch-scale">
-              <span>−40°</span><span>−20°</span><span>0°</span><span>+20°</span><span>+40°</span>
+            <span id="pitch-val" class="big-num">+0.0°</span>
+            <div class="pitch-gauge">
+              <div class="pitch-track">
+                <div class="pitch-center-mark"></div>
+                <div id="pitch-needle" class="pitch-needle"></div>
+              </div>
+              <div class="pitch-scale">
+                <span>−40°</span><span>0°</span><span>+40°</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Stats Footer -->
-        <div class="stats-bar">
-          <div class="stat-cell">
-            <span class="stat-lbl">FPS</span>
-            <span id="fps-val" class="stat-num">—</span>
+        <!-- Stats strip -->
+        <div class="stats-strip">
+          <div class="stat-item">
+            <span class="stat-label">FPS</span>
+            <span id="fps-val" class="stat-val">—</span>
           </div>
           <div class="stat-div"></div>
-          <div class="stat-cell">
-            <span class="stat-lbl">LATENCY</span>
-            <span id="latency-val" class="stat-num">—</span>
+          <div class="stat-item">
+            <span class="stat-label">LATENCY</span>
+            <span id="latency-val" class="stat-val">—</span>
           </div>
           <div class="stat-div"></div>
-          <div class="stat-cell">
-            <span class="stat-lbl">MODEL</span>
-            <span class="stat-num stat-model">EFNetV2-S</span>
+          <div class="stat-item">
+            <span class="stat-label">MODEL</span>
+            <span class="stat-val" style="color:var(--text-dim)">EFNetV2-S</span>
           </div>
         </div>
 
       </aside>
     </main>
   </div>
+
+  <!-- ══ FOOTER ════════════════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <span>© 2026 Wakey Wakey — Driver Drowsiness Detection System</span>
+    <span class="footer-sep">·</span>
+    <span>Umm Al-Qura University | Data Science Department</span>
+    <span class="footer-sep">·</span>
+    <span>0566307566</span>
+    <span class="footer-sep">|</span>
+    <a href="mailto:Azzouz.ma1@gmail.com" class="footer-link">Azzouz.ma1@gmail.com</a>
+  </footer>
 
   <script src="/static/app.js"></script>
 </body>
