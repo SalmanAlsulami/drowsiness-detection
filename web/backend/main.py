@@ -251,8 +251,9 @@ def _process_frame(frame: np.ndarray, s: _SessionState) -> dict:
         else:
             s.gaze_counter = max(0, s.gaze_counter - 1)
 
-        # eye detection only when face is frontal
-        face_frontal = abs(yaw_angle) <= HEAD_YAW_SKIP and abs(gaze_off) <= GAZE_THRESH
+        # eye detection only when face is roughly frontal (yaw check only;
+        # gaze check removed — unreliable on compressed 320x240 web frames)
+        face_frontal = abs(yaw_angle) <= HEAD_YAW_SKIP
         if face_frontal:
             closed_probs = []
             for eye_idx, side in ((RIGHT_EYE_IDX, "R"), (LEFT_EYE_IDX, "L")):
